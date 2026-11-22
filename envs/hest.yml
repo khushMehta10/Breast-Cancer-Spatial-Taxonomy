@@ -1,0 +1,26 @@
+# Analysis environment: stages 2-3 and the QuPath export scripts in 1_cellvit/scripts/qupath.
+#   conda env create -f envs/hest.yml
+name: hest
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - openslide=4.0.0
+  - pip
+  - pip:
+      - anndata==0.11.4
+      - h5py==3.16.0
+      - matplotlib==3.10.9
+      - numpy==2.2.6
+      - openslide-python==1.4.6
+      - pandas==2.3.3
+      - scikit-image==0.25.2
+      - scikit-learn==1.7.2
+      - scipy==1.15.3
+      - shapely==2.1.2
+      - tifffile==2025.5.10
+      # Notebooks only:
+      - networkx==3.4.2
+      - seaborn==0.13.2
+      # - jupyterlab
+      # - pyvips          (cell_interactions.ipynb, infiltration overlay)

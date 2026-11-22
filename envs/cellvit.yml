@@ -1,0 +1,16 @@
+# CellViT inference (1_cellvit/scripts/run_cellvit_*.sh).
+# After creating the environment, apply the patch in 1_cellvit/PATCH_NOTES.txt.
+#   conda env create -f envs/cellvit.yml
+name: cellvit
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - cellvit==1.0.9
+      - torch==2.12.1
+      - torchvision==0.27.1
+      - ray==2.55.1
+      - openslide-python==1.4.6
+      - openslide-bin==4.0.1.2

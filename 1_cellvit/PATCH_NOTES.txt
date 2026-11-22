@@ -1,0 +1,10 @@
+CellViT patch (required for some slides):
+File: <cellvit env>/lib/python3.10/site-packages/cellvit/data/dataclass/wsi_meta.py
+In find_target_mpp(), insert before each assert:
+    patch_size = round(patch_size)
+    overlap = round(overlap)
+Reason: floating-point error turns 704 into 703.9999999999999, which fails the
+"must be even" assertions.
+
+Excluded slides (mpp above CellViT's 0.75 limit):
+SPA149 0.920, SPA150 0.946, SPA151 0.921, SPA152 0.921, SPA153 0.933, SPA154 0.917

@@ -1,0 +1,29 @@
+# Data, results and logs are not tracked
+**/output/
+**/logs/
+**/archive/
+*.save
+*.save.*
+
+# Data and model files
+*.svs
+*.tif
+*.tiff
+*.ndpi
+*.npz
+*.npy
+*.h5
+*.zarr
+*.geojson
+*.csv
+*.pt
+*.pth
+*.zip
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Local link to the input data (see config.py)
+/data

@@ -9,23 +9,27 @@ Reads cell_df + cell_graph, computes local Shannon entropy per cell, and plots i
 import numpy as np
 import pandas as pd
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy import sparse
 from pathlib import Path
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import config
 
-SLIDE_ID           = "SPA51"
+SLIDE_ID = "SPA51"
 selected_window_id = "SPA51_r5_c10"
 
 ATHENA_DIR = config.ATHENA_DIR
 OUTPUT_ATHENA_DIR = config.ATHENA_OUT
 
-cell_df    = pd.read_csv(ATHENA_DIR / "cell_df" / f"{SLIDE_ID}_cells.csv")
-cell_graph = sparse.load_npz(ATHENA_DIR / "cell_graphs" / f"{SLIDE_ID}_knn_k5.npz").tocsr()
+cell_df = pd.read_csv(ATHENA_DIR / "cell_df" / f"{SLIDE_ID}_cells.csv")
+cell_graph = sparse.load_npz(
+    ATHENA_DIR / "cell_graphs" / f"{SLIDE_ID}_knn_k5.npz"
+).tocsr()
 
 print(f"slide:  {SLIDE_ID}")
 print(f"window: {selected_window_id}")
@@ -49,9 +53,9 @@ for node in range(len(cell_df)):
 
     full_shannon_values[node] = shannon_entropy
 
-selected_mask    = cell_df["window_id"].to_numpy() == selected_window_id
+selected_mask = cell_df["window_id"].to_numpy() == selected_window_id
 selected_indices = np.where(selected_mask)[0]
-selected_cells   = cell_df.loc[selected_mask].copy()
+selected_cells = cell_df.loc[selected_mask].copy()
 local_shannon_values = full_shannon_values[selected_indices]
 
 print(f"Cells in {selected_window_id}: {len(selected_indices):,}")
@@ -78,10 +82,7 @@ scatter = ax_map.scatter(
     vmax=np.log(4),
 )
 
-ax_map.set_title(
-    f"{selected_window_id}\n"
-    "Local Shannon entropy"
-)
+ax_map.set_title(f"{selected_window_id}\n" "Local Shannon entropy")
 
 ax_map.set_xlabel("x coordinate (pixels)")
 ax_map.set_ylabel("y coordinate (pixels)")
@@ -132,10 +133,7 @@ ax_hist.axvline(
     label=f"Max possible = {np.log(4):.3f}",
 )
 
-ax_hist.set_title(
-    f"{selected_window_id}\n"
-    "Local Shannon entropy distribution"
-)
+ax_hist.set_title(f"{selected_window_id}\n" "Local Shannon entropy distribution")
 
 ax_hist.set_xlabel("Local Shannon entropy")
 ax_hist.set_ylabel("Number of cells")

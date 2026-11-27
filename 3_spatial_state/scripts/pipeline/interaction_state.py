@@ -1,5 +1,5 @@
 """
-Step 5: tumour-immune spatial relation, for windows containing both.
+Step 5: tumor-immune spatial relation, for windows containing both.
 
 DETECTION, not classification. A window carries a label only if it satisfies
 every condition of that label. Windows satisfying none are "unlabeled". There
@@ -10,13 +10,13 @@ requires high modularity while infiltrated requires low.
 
   distant_co_occurrence   interaction below chance in both directions
                           immune clustered (aggregate or broad)
-                          tumour clustered (aggregate or broad)
+                          tumor clustered (aggregate or broad)
                           modularity high
 
   bordering               interaction above chance in both directions
-                          immune -> tumour infiltration low
+                          immune -> tumor infiltration low
                           immune clustered (aggregate or broad)
-                          at least BORDER_MIN_TUMOR tumour nuclei
+                          at least BORDER_MIN_TUMOR tumor nuclei
                           modularity high
 
   infiltrated             interaction above chance in both directions
@@ -37,13 +37,13 @@ THRESHOLDS
   cross-type contact than random placement would give.
 
   Infiltration is a ratio of cross-type to same-type edges, bounded below by
-  zero rather than centred on it, so it takes a within-slide median split.
+  zero rather than centered on it, so it takes a within-slide median split.
   Modularity, richness and the phenotype fractions do the same.
 
   Clustering and abundance come from steps 3 and 2 respectively. Both
   compartments must be clustered for distant_co_occurrence; bordering requires
   only the immune compartment to be clustered. Infiltrated does not use
-  clustering, since infiltrated immune cells are dispersed among tumour rather
+  clustering, since infiltrated immune cells are dispersed among tumor rather
   than aggregated with each other.
 
 Reads   step3_spatial_state/tables/<SLIDE>_spatial_state.csv
@@ -56,6 +56,7 @@ Writes  step5_interaction_state/tables/<SLIDE>_interaction_state.csv
 import numpy as np
 import pandas as pd
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -70,8 +71,8 @@ import config
 # ============================================================
 # CONFIG
 # ============================================================
-BASE_DIR    = config.STATE_OUT
-STEP3_DIR   = BASE_DIR / "step3_spatial_state" / "tables"
+BASE_DIR = config.STATE_OUT
+STEP3_DIR = BASE_DIR / "step3_spatial_state" / "tables"
 ATHENA2_DIR = config.ATHENA2_DIR
 
 OUT_DIR = BASE_DIR / "step5_interaction_state"
@@ -80,32 +81,32 @@ FIG_DIR = OUT_DIR / "figures"
 for d in (OUT_DIR, CSV_DIR, FIG_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-SLIDES  = "ALL"
-SPLIT_Q = 0.50          # within-slide split for infiltration, modularity,
-                        # richness and fractions
-ENRICH_EPS = 0.0        # interaction: above this counts as above chance
+SLIDES = "ALL"
+SPLIT_Q = 0.50  # within-slide split for infiltration, modularity,
+# richness and fractions
+ENRICH_EPS = 0.0  # interaction: above this counts as above chance
 
 CLUSTERED_STATES = ("aggregate", "broad")
-ABUNDANT_TIERS   = ("moderate", "high")
+ABUNDANT_TIERS = ("moderate", "high")
 
 # Bordering requires the tumor compartment to be a group rather than a scatter.
-# Five is where tumour self-interaction flips from 22% of windows above chance
+# Five is where tumor self-interaction flips from 22% of windows above chance
 # (3-4 nuclei) to 84% (5-9 nuclei), so the threshold is set by the data.
 BORDER_MIN_TUMOR = 5
-TUMOR_COUNT_COL  = "neoplastic_count"
+TUMOR_COUNT_COL = "neoplastic_count"
 
 # source columns
 COLS = {
-    "int_i2c":  "interaction_inflammatory_to_neoplastic",
-    "int_c2i":  "interaction_neoplastic_to_inflammatory",
-    "inf_i2c":  "infiltration_inflammatory_to_neoplastic",
-    "inf_c2i":  "infiltration_neoplastic_to_inflammatory",
-    "modular":  "global_modularity",
+    "int_i2c": "interaction_inflammatory_to_neoplastic",
+    "int_c2i": "interaction_neoplastic_to_inflammatory",
+    "inf_i2c": "infiltration_inflammatory_to_neoplastic",
+    "inf_c2i": "infiltration_neoplastic_to_inflammatory",
+    "modular": "global_modularity",
     "richness": "local_richness_mean",
-    "frac_i":   "inflammatory_fraction",
-    "frac_c":   "neoplastic_fraction",
+    "frac_i": "inflammatory_fraction",
+    "frac_c": "neoplastic_fraction",
 }
-SIGN_METRICS = {"int_i2c", "int_c2i"}     # thresholded at zero
+SIGN_METRICS = {"int_i2c", "int_c2i"}  # thresholded at zero
 CAT_COLS = {
     "sp_i": "immune_spatial_state",
     "sp_c": "cancer_spatial_state",
@@ -114,15 +115,20 @@ CAT_COLS = {
 }
 
 STATE_COLORS = {
-    "not_applicable":        "#2B2B33",
-    "unlabeled":             "#4A4A55",
+    "not_applicable": "#2B2B33",
+    "unlabeled": "#4A4A55",
     "distant_co_occurrence": "#4C6E8A",
-    "bordering":             "#E4A11B",
-    "infiltrated":           "#35B779",
-    "niche":                 "#D9534F",   # display only: infiltrated + niche
+    "bordering": "#E4A11B",
+    "infiltrated": "#35B779",
+    "niche": "#D9534F",  # display only: infiltrated + niche
 }
-ORDER = ["not_applicable", "unlabeled", "distant_co_occurrence",
-         "bordering", "infiltrated"]
+ORDER = [
+    "not_applicable",
+    "unlabeled",
+    "distant_co_occurrence",
+    "bordering",
+    "infiltrated",
+]
 DOM_ORDER = ["tumour_dominant", "immune_dominant", "balanced"]
 
 
@@ -155,12 +161,12 @@ def hi_lo(df, mask):
 def assign(df):
     """Strict labels, a niche flag and a dominance descriptor."""
     n = len(df)
-    both = (df["window_class"].to_numpy() == 4)
+    both = df["window_class"].to_numpy() == 4
 
     state = np.full(n, "not_applicable", dtype=object)
-    dom   = np.full(n, "not_applicable", dtype=object)
+    dom = np.full(n, "not_applicable", dtype=object)
     niche = np.zeros(n, dtype=bool)
-    diag  = {}
+    diag = {}
 
     if both.sum() == 0:
         return state, niche, dom, diag, both
@@ -169,12 +175,12 @@ def assign(df):
 
     clustered_i = np.isin(df[CAT_COLS["sp_i"]].to_numpy(object), CLUSTERED_STATES)
     clustered_c = np.isin(df[CAT_COLS["sp_c"]].to_numpy(object), CLUSTERED_STATES)
-    abundant_i  = np.isin(df[CAT_COLS["ab_i"]].to_numpy(object), ABUNDANT_TIERS)
-    abundant_c  = np.isin(df[CAT_COLS["ab_c"]].to_numpy(object), ABUNDANT_TIERS)
+    abundant_i = np.isin(df[CAT_COLS["ab_i"]].to_numpy(object), ABUNDANT_TIERS)
+    abundant_c = np.isin(df[CAT_COLS["ab_c"]].to_numpy(object), ABUNDANT_TIERS)
 
     contact_lo = lo["int_i2c"] & lo["int_c2i"]
     contact_hi = hi["int_i2c"] & hi["int_c2i"]
-    infil_hi   = hi["inf_i2c"] & hi["inf_c2i"]
+    infil_hi = hi["inf_i2c"] & hi["inf_c2i"]
 
     q_distant = both & contact_lo & clustered_i & clustered_c & hi["modular"]
     # Bordering tests immune->tumor infiltration only. The tumor->immune
@@ -186,24 +192,30 @@ def assign(df):
     if TUMOR_COUNT_COL in df.columns:
         tumor_group = df[TUMOR_COUNT_COL].to_numpy(float) >= BORDER_MIN_TUMOR
     else:
-        print(f"   ERROR: {TUMOR_COUNT_COL} not found; bordering minimum tumor "
-              f"count NOT applied.", file=sys.stderr)
+        print(
+            f"   ERROR: {TUMOR_COUNT_COL} not found; bordering minimum tumor "
+            f"count NOT applied.",
+            file=sys.stderr,
+        )
         tumor_group = np.ones(n, dtype=bool)
-    q_border  = (both & contact_hi & lo["inf_i2c"] & clustered_i
-                 & hi["modular"] & tumor_group)
-    q_infil   = both & contact_hi & infil_hi & lo["modular"]
+    q_border = (
+        both & contact_hi & lo["inf_i2c"] & clustered_i & hi["modular"] & tumor_group
+    )
+    q_infil = both & contact_hi & infil_hi & lo["modular"]
 
     # mutual exclusivity holds by construction; checked here
-    overlap = (q_distant.astype(int) + q_border.astype(int) +
-               q_infil.astype(int)) > 1
+    overlap = (q_distant.astype(int) + q_border.astype(int) + q_infil.astype(int)) > 1
     if overlap.any():
-        print(f"   ERROR: {int(overlap.sum())} windows qualify for more than "
-              f"one state. Definitions are not exclusive.", file=sys.stderr)
+        print(
+            f"   ERROR: {int(overlap.sum())} windows qualify for more than "
+            f"one state. Definitions are not exclusive.",
+            file=sys.stderr,
+        )
 
-    state[both]      = "unlabeled"
+    state[both] = "unlabeled"
     state[q_distant] = "distant_co_occurrence"
-    state[q_border]  = "bordering"
-    state[q_infil]   = "infiltrated"
+    state[q_border] = "bordering"
+    state[q_infil] = "infiltrated"
 
     niche = q_infil & abundant_i & abundant_c & hi["richness"]
 
@@ -216,14 +228,14 @@ def assign(df):
         "int_c2i_above_chance": hi["int_c2i"],
         "infiltration_i2c_high": hi["inf_i2c"],
         "infiltration_c2i_high": hi["inf_c2i"],
-        "modularity_high":       hi["modular"],
-        "richness_high":         hi["richness"],
-        "immune_clustered":      clustered_i,
-        "cancer_clustered":      clustered_c,
-        "immune_abundant":       abundant_i,
-        "cancer_abundant":       abundant_c,
-        "qualifies_distant":     q_distant,
-        "qualifies_bordering":   q_border,
+        "modularity_high": hi["modular"],
+        "richness_high": hi["richness"],
+        "immune_clustered": clustered_i,
+        "cancer_clustered": clustered_c,
+        "immune_abundant": abundant_i,
+        "cancer_abundant": abundant_c,
+        "qualifies_distant": q_distant,
+        "qualifies_bordering": q_border,
         "qualifies_infiltrated": q_infil,
     }
     return state, niche, dom, diag, both
@@ -255,12 +267,14 @@ for i, path in enumerate(files, 1):
     if need:
         df = df.merge(feats[["window_id"] + need], on="window_id", how="left")
 
-    missing = ([c for c in COLS.values() if c not in df.columns] +
-               [c for c in CAT_COLS.values() if c not in df.columns])
+    missing = [c for c in COLS.values() if c not in df.columns] + [
+        c for c in CAT_COLS.values() if c not in df.columns
+    ]
     if missing:
         raise SystemExit(
-            f"{slide}: required columns missing, refusing to run:\n   " +
-            "\n   ".join(missing))
+            f"{slide}: required columns missing, refusing to run:\n   "
+            + "\n   ".join(missing)
+        )
 
     state, niche, dom, diag, both = assign(df)
     df["interaction_state"] = state
@@ -271,20 +285,31 @@ for i, path in enumerate(files, 1):
 
     counts = pd.Series(state).value_counts()
     n_both = int(both.sum())
-    n_lab  = sum(int(counts.get(k, 0)) for k in
-                 ("distant_co_occurrence", "bordering", "infiltrated"))
-    parts = "  ".join(f"{k}={int(counts.get(k, 0))}" for k in ORDER[2:]
-                      if counts.get(k, 0))
-    print(f"\n[{i}/{len(files)}] {slide}: {len(df)} windows, {n_both} with both",
-          flush=True)
+    n_lab = sum(
+        int(counts.get(k, 0))
+        for k in ("distant_co_occurrence", "bordering", "infiltrated")
+    )
+    parts = "  ".join(
+        f"{k}={int(counts.get(k, 0))}" for k in ORDER[2:] if counts.get(k, 0)
+    )
+    print(
+        f"\n[{i}/{len(files)}] {slide}: {len(df)} windows, {n_both} with both",
+        flush=True,
+    )
     if n_both:
-        print(f"   {parts}   niche={int(niche.sum())}   "
-              f"unlabeled={int(counts.get('unlabeled', 0))}")
+        print(
+            f"   {parts}   niche={int(niche.sum())}   "
+            f"unlabeled={int(counts.get('unlabeled', 0))}"
+        )
 
-    row = {"slide_id": slide,
-           "technology": df["technology"].iloc[0] if "technology" in df.columns else "",
-           "n_windows": len(df), "n_both": n_both,
-           "n_labeled": n_lab, "n_niche": int(niche.sum())}
+    row = {
+        "slide_id": slide,
+        "technology": df["technology"].iloc[0] if "technology" in df.columns else "",
+        "n_windows": len(df),
+        "n_both": n_both,
+        "n_labeled": n_lab,
+        "n_niche": int(niche.sum()),
+    }
     for k in ORDER:
         row[k] = int(counts.get(k, 0))
     for d in DOM_ORDER:
@@ -299,13 +324,15 @@ for i, path in enumerate(files, 1):
 
     fig, ax = plt.subplots(figsize=(8, 8))
     ax.set_facecolor("#101018")
-    rects, colours = [], []
+    rects, colors = [], []
     for r, lab in zip(df.itertuples(index=False), display):
-        colours.append(STATE_COLORS.get(lab, "#FFFFFF"))
-        rects.append(patches.Rectangle((r.xmin, r.ymin),
-                                       r.xmax - r.xmin, r.ymax - r.ymin))
-    ax.add_collection(PatchCollection(rects, facecolors=colours,
-                                      edgecolors="none", linewidths=0))
+        colors.append(STATE_COLORS.get(lab, "#FFFFFF"))
+        rects.append(
+            patches.Rectangle((r.xmin, r.ymin), r.xmax - r.xmin, r.ymax - r.ymin)
+        )
+    ax.add_collection(
+        PatchCollection(rects, facecolors=colors, edgecolors="none", linewidths=0)
+    )
 
     pad = 0.05 * (df["xmax"].max() - df["xmin"].min())
     ax.set_xlim(df["xmin"].min() - pad, df["xmax"].max() + pad)
@@ -314,18 +341,29 @@ for i, path in enumerate(files, 1):
     ax.invert_yaxis()
     ax.set_xlabel("X coordinate")
     ax.set_ylabel("Y coordinate")
-    ax.set_title(f"{slide}: tumour-immune spatial relation")
+    ax.set_title(f"{slide}: tumor-immune spatial relation")
 
     shown = pd.Series(display).value_counts()
-    handles = [Line2D([0], [0], marker="s", linestyle="none", markersize=9,
-                      markerfacecolor=STATE_COLORS[lab], markeredgecolor="none",
-                      label=f"{lab} (n={int(shown.get(lab, 0))})")
-               for lab in ORDER + ["niche"] if shown.get(lab, 0)]
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="s",
+            linestyle="none",
+            markersize=9,
+            markerfacecolor=STATE_COLORS[lab],
+            markeredgecolor="none",
+            label=f"{lab} (n={int(shown.get(lab, 0))})",
+        )
+        for lab in ORDER + ["niche"]
+        if shown.get(lab, 0)
+    ]
     ax.legend(handles=handles, loc="upper right", fontsize=7, frameon=True)
 
     plt.tight_layout()
-    plt.savefig(FIG_DIR / f"{slide}_interaction_state.png", dpi=200,
-                bbox_inches="tight")
+    plt.savefig(
+        FIG_DIR / f"{slide}_interaction_state.png", dpi=200, bbox_inches="tight"
+    )
     plt.close(fig)
 
 
@@ -336,7 +374,7 @@ s = pd.DataFrame(summary_rows)
 s.to_csv(OUT_DIR / "interaction_state_summary.csv", index=False)
 
 total = int(s["n_windows"].sum())
-both  = int(s["n_both"].sum())
+both = int(s["n_both"].sum())
 print("\n" + "=" * 64)
 print("COHORT TOTALS   (strict: every condition must hold)")
 print("=" * 64)

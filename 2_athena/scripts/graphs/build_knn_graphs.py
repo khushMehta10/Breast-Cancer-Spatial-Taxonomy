@@ -1,5 +1,5 @@
 """
-k = 5 nearest-neighbour cell graph for every slide.
+k = 5 nearest-neighbor cell graph for every slide.
 
   in : 2_athena/output/tables/<SLIDE>_cells.csv
   out: 2_athena/output/graphs/<SLIDE>_knn_k5.npz   (symmetric sparse adjacency)
@@ -13,11 +13,12 @@ from scipy import sparse
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import config
 
 TABLE_DIR = str(config.ATHENA_OUT / "tables")
-OUT_DIR   = str(config.ATHENA_OUT / "graphs")
+OUT_DIR = str(config.ATHENA_OUT / "graphs")
 K = 5
 os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -37,8 +38,9 @@ for i, path in enumerate(tables, 1):
     coordinates = cells_df[["x", "y"]].to_numpy(dtype=np.float64)
     k = K
 
-    model = NearestNeighbors(n_neighbors=k + 1, metric="euclidean",
-                             algorithm="kd_tree", n_jobs=-1)
+    model = NearestNeighbors(
+        n_neighbors=k + 1, metric="euclidean", algorithm="kd_tree", n_jobs=-1
+    )
     model.fit(coordinates)
     distances, indices = model.kneighbors(coordinates)
 
@@ -51,7 +53,8 @@ for i, path in enumerate(tables, 1):
 
     directed = sparse.coo_matrix(
         (np.ones(len(source), dtype=np.uint8), (source, target)),
-        shape=(number_of_cells, number_of_cells)).tocsr()
+        shape=(number_of_cells, number_of_cells),
+    ).tocsr()
 
     adjacency = directed.maximum(directed.T)
     adjacency.setdiag(0)

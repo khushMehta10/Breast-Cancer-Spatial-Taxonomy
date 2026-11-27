@@ -18,21 +18,22 @@ import numpy as np
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import config
 
-ST_DIR   = str(config.BREAST_ST_DIR)
+ST_DIR = str(config.BREAST_ST_DIR)
 OUT_ROOT = str(config.QUPATH_OUT)
 
 # slide: (platform, spot_diameter_um, pixel_size_um)   from HEST metadata
 SLIDES = {
-    "SPA51":   ("Spatial Transcriptomics", 100.0, 0.6861319494),
-    "NCBI776": ("Visium",                   55.0, 0.5475531951),
-    "NCBI783": ("Xenium",                   None, 0.2739598560),  # no spots
+    "SPA51": ("Spatial Transcriptomics", 100.0, 0.6861319494),
+    "NCBI776": ("Visium", 55.0, 0.5475531951),
+    "NCBI783": ("Xenium", None, 0.2739598560),  # no spots
 }
 
-COLOR = [0, 0, 0]        # black outline
-NPTS  = 32               # vertices per circle
+COLOR = [0, 0, 0]  # black outline
+NPTS = 32  # vertices per circle
 
 
 def circle(cx, cy, r, n=NPTS):
@@ -63,9 +64,13 @@ def main():
 
         try:
             import anndata as ad
-            spots = np.asarray(ad.read_h5ad(h5, backed="r").obsm["spatial"], dtype=float)
+
+            spots = np.asarray(
+                ad.read_h5ad(h5, backed="r").obsm["spatial"], dtype=float
+            )
         except Exception:
             import h5py
+
             with h5py.File(h5, "r") as f:
                 spots = f["obsm/spatial"][:].astype(float)
 

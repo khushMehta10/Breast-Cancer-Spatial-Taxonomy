@@ -2,7 +2,7 @@
 Step 2: measure abundance of immune and cancer cells per window.
 
 For each window and each phenotype (inflammatory, neoplastic), the cell
-count is labelled absent (0), low, moderate or high. MODE selects how the
+count is labeled absent (0), low, moderate or high. MODE selects how the
 cutoffs are set:
 
   "quantile" (default)  per-slide quartiles. Among the windows of a slide
@@ -19,7 +19,7 @@ slides are strongly zero-inflated for neoplastic and including zeros
 collapses q25 and q75 to 0.
 
 Maps carry the tissue boundary, segmented from the H&E thumbnail on HSV
-saturation (stained tissue is coloured, glass is not).
+saturation (stained tissue is colored, glass is not).
 
 Reads   step1_window_classes/tables/<SLIDE>_window_classes.csv
         breast/st/<SLIDE>.h5ad  (thumbnail)
@@ -32,6 +32,7 @@ Writes  step2_abundance/tables/<SLIDE>_abundance.csv
 import numpy as np
 import pandas as pd
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -41,6 +42,7 @@ from pathlib import Path
 import glob, os
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import config
 
@@ -57,36 +59,36 @@ FIG_DIR = OUT_DIR / "figures"
 for d in (OUT_DIR, CSV_DIR, FIG_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-SLIDES         = "ALL"        # "ALL", or ["SPA51", "TENX68"]
-MODE           = "quantile"   # "absolute" or "quantile"
+SLIDES = "ALL"  # "ALL", or ["SPA51", "TENX68"]
+MODE = "quantile"  # "absolute" or "quantile"
 
 # absolute mode: fixed cell-count cutoffs, same on every slide
-LOW_MAX        = 9            # 1..LOW_MAX          -> low
-HIGH_MIN       = 50           # HIGH_MIN and above  -> high
-                              # matches Ripley's minimum cell requirement
-                              # in the ATHENA features, so every high window
-                              # has measurable clustering
+LOW_MAX = 9  # 1..LOW_MAX          -> low
+HIGH_MIN = 50  # HIGH_MIN and above  -> high
+# matches Ripley's minimum cell requirement
+# in the ATHENA features, so every high window
+# has measurable clustering
 
 # quantile mode only
-QUARTILE_SCOPE = "slide"      # "slide" or "cohort"
-ZERO_HANDLING  = "absent"     # "absent" or "low"
+QUARTILE_SCOPE = "slide"  # "slide" or "cohort"
+ZERO_HANDLING = "absent"  # "absent" or "low"
 
-MEASURE        = "count"      # "count" or "fraction"
+MEASURE = "count"  # "count" or "fraction"
 
-DRAW_OUTLINE   = True         # segment and draw the tissue boundary
-MIN_AREA_FRAC  = 0.002        # drop specks below this fraction of the thumbnail
-MIN_PTS        = 30           # drop contours with fewer vertices
+DRAW_OUTLINE = True  # segment and draw the tissue boundary
+MIN_AREA_FRAC = 0.002  # drop specks below this fraction of the thumbnail
+MIN_PTS = 30  # drop contours with fewer vertices
 
 PHENOTYPES = {
     "inflammatory": "immune",
-    "neoplastic":   "cancer",
+    "neoplastic": "cancer",
 }
 
 ABUNDANCE_COLORS = {
-    "absent":   "#2B2B33",
-    "low":      "#3E6E8E",
+    "absent": "#2B2B33",
+    "low": "#3E6E8E",
     "moderate": "#2FA37C",
-    "high":     "#F2C744",
+    "high": "#F2C744",
 }
 ORDER = ["absent", "low", "moderate", "high"]
 
@@ -107,20 +109,24 @@ def tissue_outline(slide):
         import anndata as ad
         from matplotlib.colors import rgb_to_hsv
         from skimage.filters import threshold_otsu
-        from skimage.morphology import (remove_small_objects, remove_small_holes,
-                                        binary_closing, disk)
+        from skimage.morphology import (
+            remove_small_objects,
+            remove_small_holes,
+            binary_closing,
+            disk,
+        )
         from skimage.measure import find_contours
 
         adata = ad.read_h5ad(h5, backed="r")
-        lib   = adata.uns["spatial"][list(adata.uns["spatial"].keys())[0]]
-        img   = np.asarray(lib["images"]["downscaled_fullres"])
+        lib = adata.uns["spatial"][list(adata.uns["spatial"].keys())[0]]
+        img = np.asarray(lib["images"]["downscaled_fullres"])
         scale = float(lib["scalefactors"]["tissue_downscaled_fullres_scalef"])
 
         rgb = img[..., :3].astype(float)
         if rgb.max() > 1.5:
             rgb = rgb / 255.0
 
-        sat  = rgb_to_hsv(rgb)[..., 1]
+        sat = rgb_to_hsv(rgb)[..., 1]
         mask = sat > threshold_otsu(sat)
 
         min_area = int(MIN_AREA_FRAC * mask.size)
@@ -179,7 +185,9 @@ else:
     files = [str(STEP1_DIR / f"{s}_window_classes.csv") for s in SLIDES]
 
 if not files:
-    raise SystemExit(f"No step 1 tables found in {STEP1_DIR}. Run classify_windows.py first.")
+    raise SystemExit(
+        f"No step 1 tables found in {STEP1_DIR}. Run classify_windows.py first."
+    )
 
 # Cohort: slides with a breast h5ad, minus config.EXCLUDED_SLIDES
 frames, skipped = {}, []
@@ -201,7 +209,9 @@ if MODE == "quantile" and QUARTILE_SCOPE == "cohort":
     for pheno in PHENOTYPES:
         col = f"{pheno}_{MEASURE}"
         cohort_thr[pheno] = thresholds(allrows[col].fillna(0).to_numpy(), ZERO_HANDLING)
-        print(f"cohort {pheno}: q25={cohort_thr[pheno][0]:.3f}  q75={cohort_thr[pheno][1]:.3f}")
+        print(
+            f"cohort {pheno}: q25={cohort_thr[pheno][0]:.3f}  q75={cohort_thr[pheno][1]:.3f}"
+        )
 
 
 # ============================================================
@@ -210,9 +220,11 @@ if MODE == "quantile" and QUARTILE_SCOPE == "cohort":
 summary_rows, threshold_rows = [], []
 
 for i, (slide, df) in enumerate(sorted(frames.items()), 1):
-    row = {"slide_id": slide,
-           "technology": df["technology"].iloc[0] if "technology" in df.columns else "",
-           "n_windows": len(df)}
+    row = {
+        "slide_id": slide,
+        "technology": df["technology"].iloc[0] if "technology" in df.columns else "",
+        "n_windows": len(df),
+    }
     thr_row = {"slide_id": slide}
 
     print(f"\n[{i}/{len(frames)}] {slide}: {len(df)} windows", flush=True)
@@ -228,8 +240,10 @@ for i, (slide, df) in enumerate(sorted(frames.items()), 1):
             q25, q75 = float(LOW_MAX), float(HIGH_MIN)
             counts = pd.Series(df[f"{short}_abundance"]).value_counts()
             parts = "  ".join(f"{lab}={int(counts.get(lab, 0))}" for lab in ORDER)
-            print(f"   {short:<7} present={n_present:<5} "
-                  f"low<={LOW_MAX} high>={HIGH_MIN}   {parts}")
+            print(
+                f"   {short:<7} present={n_present:<5} "
+                f"low<={LOW_MAX} high>={HIGH_MIN}   {parts}"
+            )
         else:
             if QUARTILE_SCOPE == "cohort":
                 q25, q75 = cohort_thr[pheno]
@@ -240,13 +254,17 @@ for i, (slide, df) in enumerate(sorted(frames.items()), 1):
                 df[f"{short}_abundance"] = "absent"
                 print(f"   {short:<7} no windows contain this phenotype")
             else:
-                df[f"{short}_abundance"] = assign_abundance(vals, q25, q75, ZERO_HANDLING)
+                df[f"{short}_abundance"] = assign_abundance(
+                    vals, q25, q75, ZERO_HANDLING
+                )
                 counts = pd.Series(df[f"{short}_abundance"]).value_counts()
                 parts = "  ".join(f"{lab}={int(counts.get(lab, 0))}" for lab in ORDER)
-                print(f"   {short:<7} present={n_present:<5} "
-                      f"q25={q25:8.2f} q75={q75:8.2f}   {parts}")
+                print(
+                    f"   {short:<7} present={n_present:<5} "
+                    f"q25={q25:8.2f} q75={q75:8.2f}   {parts}"
+                )
 
-        thr_row[f"{short}_low_max"]  = q25
+        thr_row[f"{short}_low_max"] = q25
         thr_row[f"{short}_high_min"] = q75
         thr_row[f"{short}_n_present"] = n_present
 
@@ -266,14 +284,16 @@ for i, (slide, df) in enumerate(sorted(frames.items()), 1):
     fig, axes = plt.subplots(1, 2, figsize=(15, 7.5))
     for ax, (pheno, short) in zip(axes, PHENOTYPES.items()):
         ax.set_facecolor("#101018")
-        rects, colours = [], []
+        rects, colors = [], []
         for r in df.itertuples(index=False):
             lab = getattr(r, f"{short}_abundance")
-            colours.append(ABUNDANCE_COLORS.get(lab, "#FFFFFF"))
-            rects.append(patches.Rectangle((r.xmin, r.ymin),
-                                           r.xmax - r.xmin, r.ymax - r.ymin))
-        ax.add_collection(PatchCollection(rects, facecolors=colours,
-                                          edgecolors="none", linewidths=0))
+            colors.append(ABUNDANCE_COLORS.get(lab, "#FFFFFF"))
+            rects.append(
+                patches.Rectangle((r.xmin, r.ymin), r.xmax - r.xmin, r.ymax - r.ymin)
+            )
+        ax.add_collection(
+            PatchCollection(rects, facecolors=colors, edgecolors="none", linewidths=0)
+        )
         for seg in outline:
             ax.plot(seg[:, 0], seg[:, 1], color="white", linewidth=1.0, zorder=5)
 
@@ -288,9 +308,16 @@ for i, (slide, df) in enumerate(sorted(frames.items()), 1):
 
         counts = pd.Series(df[f"{short}_abundance"]).value_counts()
         handles = [
-            Line2D([0], [0], marker="s", linestyle="none", markersize=9,
-                   markerfacecolor=ABUNDANCE_COLORS[lab], markeredgecolor="none",
-                   label=f"{lab} (n={int(counts.get(lab, 0))})")
+            Line2D(
+                [0],
+                [0],
+                marker="s",
+                linestyle="none",
+                markersize=9,
+                markerfacecolor=ABUNDANCE_COLORS[lab],
+                markeredgecolor="none",
+                label=f"{lab} (n={int(counts.get(lab, 0))})",
+            )
             for lab in ORDER
         ]
         ax.legend(handles=handles, loc="upper right", fontsize=7, frameon=True)
@@ -315,11 +342,15 @@ print("=" * 60)
 total = int(s["n_windows"].sum())
 print(f"slides: {len(s)}   windows: {total:,}")
 if MODE == "absolute":
-    print(f"absolute cutoffs: low 1-{LOW_MAX}, moderate {LOW_MAX+1}-{HIGH_MIN-1}, "
-          f"high >={HIGH_MIN}   measure: {MEASURE}")
+    print(
+        f"absolute cutoffs: low 1-{LOW_MAX}, moderate {LOW_MAX+1}-{HIGH_MIN-1}, "
+        f"high >={HIGH_MIN}   measure: {MEASURE}"
+    )
 else:
-    print(f"quantile mode: {QUARTILE_SCOPE}   zeros: {ZERO_HANDLING}   "
-          f"measure: {MEASURE}")
+    print(
+        f"quantile mode: {QUARTILE_SCOPE}   zeros: {ZERO_HANDLING}   "
+        f"measure: {MEASURE}"
+    )
 for short in PHENOTYPES.values():
     print(f"\n  {short}")
     for lab in ORDER:

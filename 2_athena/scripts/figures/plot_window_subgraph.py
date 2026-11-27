@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import anndata as ad
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -26,14 +27,15 @@ from scipy.sparse import triu
 from pathlib import Path
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import config
 
 # ---- settings ----
-SLIDE_ID        = "SPA51"
+SLIDE_ID = "SPA51"
 SELECTED_WINDOW = "SPA51_r5_c10"
 
-ST_DIR     = config.BREAST_ST_DIR
+ST_DIR = config.BREAST_ST_DIR
 ATHENA_DIR = config.ATHENA_DIR
 OUTPUT_ATHENA_DIR = config.ATHENA_OUT
 
@@ -42,30 +44,33 @@ OUTPUT_ATHENA_DIR = config.ATHENA_OUT
 def spot_diameter_um(technology):
     t = str(technology).lower()
     if "xenium" in t:
-        return None                      # subcellular, no capture spots
+        return None  # subcellular, no capture spots
     if "visium" in t:
-        return 55.0                      # Visium: 55 um spots
+        return 55.0  # Visium: 55 um spots
     if "transcriptomics" in t or t.strip() == "st":
-        return 100.0                     # legacy Spatial Transcriptomics: 100 um
-    return None                          # unknown platform -> skip spots safely
+        return 100.0  # legacy Spatial Transcriptomics: 100 um
+    return None  # unknown platform -> skip spots safely
 
 
 # ---- load tables ----
-cell_df   = pd.read_csv(ATHENA_DIR / "cell_df"   / f"{SLIDE_ID}_cells.csv")
-spot_df   = pd.read_csv(ATHENA_DIR / "spot_df"   / f"{SLIDE_ID}_spots.csv")
+cell_df = pd.read_csv(ATHENA_DIR / "cell_df" / f"{SLIDE_ID}_cells.csv")
+spot_df = pd.read_csv(ATHENA_DIR / "spot_df" / f"{SLIDE_ID}_spots.csv")
 window_df = pd.read_csv(ATHENA_DIR / "window_df" / f"{SLIDE_ID}_windows.csv")
 
 # ---- platform + pixel size, straight from this slide's metadata ----
 technology = window_df["technology"].iloc[0]
-mpp        = float(window_df["pixel_size_um_x"].iloc[0])   # microns per pixel
-spot_um    = spot_diameter_um(technology)
+mpp = float(window_df["pixel_size_um_x"].iloc[0])  # microns per pixel
+spot_um = spot_diameter_um(technology)
 spot_radius_px = (spot_um / 2.0 / mpp) if spot_um else None
 
 print(f"slide:      {SLIDE_ID}")
 print(f"technology: {technology}")
 print(f"mpp:        {mpp:.4f} um/px")
-print(f"spot:       {spot_um} um  (radius {spot_radius_px:.1f} px)" if spot_um
-      else "spot:       none for this platform")
+print(
+    f"spot:       {spot_um} um  (radius {spot_radius_px:.1f} px)"
+    if spot_um
+    else "spot:       none for this platform"
+)
 
 # ---- tissue image + display scale (auto-detect the library key) ----
 adata = ad.read_h5ad(ST_DIR / f"{SLIDE_ID}.h5ad")
@@ -78,18 +83,13 @@ display_scale = float(
 
 # ---- select the window and pull its subgraph ----
 selected_window_id = SELECTED_WINDOW
-selected_window = window_df.loc[
-    window_df["window_id"] == selected_window_id
-].iloc[0]
+selected_window = window_df.loc[window_df["window_id"] == selected_window_id].iloc[0]
 
-selected_node_indices = (
-    cell_df.loc[cell_df["window_id"] == selected_window_id, "node_index"]
-    .to_numpy(dtype=np.int64)
-)
+selected_node_indices = cell_df.loc[
+    cell_df["window_id"] == selected_window_id, "node_index"
+].to_numpy(dtype=np.int64)
 
-full_adjacency = sparse.load_npz(
-    ATHENA_DIR / "cell_graphs" / f"{SLIDE_ID}_knn_k5.npz"
-)
+full_adjacency = sparse.load_npz(ATHENA_DIR / "cell_graphs" / f"{SLIDE_ID}_knn_k5.npz")
 window_subgraph = full_adjacency[selected_node_indices][:, selected_node_indices]
 n_edges = int(window_subgraph.nnz // 2)
 
@@ -106,13 +106,9 @@ print("=" * 70)
 print("PREPARING WINDOW GRAPH VISUALIZATION")
 print("=" * 70)
 
-selected_cells = cell_df.loc[
-    cell_df["window_id"] == selected_window_id
-].copy()
+selected_cells = cell_df.loc[cell_df["window_id"] == selected_window_id].copy()
 
-selected_spots = spot_df.loc[
-    spot_df["window_id"] == selected_window_id
-].copy()
+selected_spots = spot_df.loc[spot_df["window_id"] == selected_window_id].copy()
 
 print(f"Selected window ID:       {selected_window_id}")
 print(f"Selected cells:           {len(selected_cells):,}")
@@ -140,9 +136,7 @@ print("Selected cells, spots, and subgraph are consistent.")
 
 
 # node-order check
-current_selected_node_indices = (
-    selected_cells["node_index"].to_numpy(dtype=np.int64)
-)
+current_selected_node_indices = selected_cells["node_index"].to_numpy(dtype=np.int64)
 node_order_matches = np.array_equal(
     current_selected_node_indices, selected_node_indices
 )
@@ -184,15 +178,15 @@ selected_spot_y_display = selected_spots["y"].to_numpy(dtype=float) * display_sc
 n_cells_win = len(selected_cells)
 scale = (700.0 / max(n_cells_win, 1)) ** 0.5
 scale = min(max(scale, 0.25), 3.0)
-cell_base   = 45.0 * scale
-edge_width  = max(0.4, 1.4 * scale)
-edge_alpha  = min(0.75, 0.35 + 0.4 * scale)
+cell_base = 45.0 * scale
+edge_width = max(0.4, 1.4 * scale)
+edge_alpha = min(0.75, 0.35 + 0.4 * scale)
 
 cell_type_styles = {
-    "Neoplastic":   {"color": "#FF0000", "size": cell_base * 1.00},   # (255,0,0)
-    "Inflammatory": {"color": "#22DD4D", "size": cell_base * 1.00},   # (34,221,77)
-    "Connective":   {"color": "#235CEC", "size": cell_base * 0.70},   # (35,92,236)
-    "Epithelial":   {"color": "#FF9F44", "size": cell_base * 0.85},   # (255,159,68)
+    "Neoplastic": {"color": "#FF0000", "size": cell_base * 1.00},  # (255,0,0)
+    "Inflammatory": {"color": "#22DD4D", "size": cell_base * 1.00},  # (34,221,77)
+    "Connective": {"color": "#235CEC", "size": cell_base * 0.70},  # (35,92,236)
+    "Epithelial": {"color": "#FF9F44", "size": cell_base * 0.85},  # (255,159,68)
 }
 known_cell_types = set(cell_type_styles.keys())
 observed_cell_types = set(selected_cells["cell_type"].dropna().unique())
@@ -220,34 +214,55 @@ for cell_type, style in cell_type_styles.items():
     if n_type_cells == 0:
         continue
     ax.scatter(
-        selected_x_display[mask], selected_y_display[mask],
-        s=style["size"], c=style["color"], alpha=0.80,
-        label=f"{cell_type} (n={n_type_cells:,})", zorder=3,
+        selected_x_display[mask],
+        selected_y_display[mask],
+        s=style["size"],
+        c=style["color"],
+        alpha=0.80,
+        label=f"{cell_type} (n={n_type_cells:,})",
+        zorder=3,
     )
 
 for cell_type in sorted(unexpected_cell_types):
     mask = selected_cells["cell_type"].to_numpy() == cell_type
     n_type_cells = int(mask.sum())
     ax.scatter(
-        selected_x_display[mask], selected_y_display[mask],
-        s=cell_base * 0.8, alpha=0.80,
-        label=f"{cell_type} (n={n_type_cells:,})", zorder=3,
+        selected_x_display[mask],
+        selected_y_display[mask],
+        s=cell_base * 0.8,
+        alpha=0.80,
+        label=f"{cell_type} (n={n_type_cells:,})",
+        zorder=3,
     )
 
 # ---- ST spots at true physical size (Circle patches in data coords) ----
 if spot_radius_px is not None:
     r_disp = spot_radius_px * display_scale
     for sx, sy in zip(selected_spot_x_display, selected_spot_y_display):
-        ax.add_patch(Circle(
-            (sx, sy), radius=r_disp,
-            facecolor="none", edgecolor="black",
-            linewidth=1.3, zorder=4,
-        ))
+        ax.add_patch(
+            Circle(
+                (sx, sy),
+                radius=r_disp,
+                facecolor="none",
+                edgecolor="black",
+                linewidth=1.3,
+                zorder=4,
+            )
+        )
     # legend proxy
-    ax.scatter([], [], s=60, facecolors="none", edgecolors="black",
-               linewidths=1.3, label=f"ST observations (n={len(selected_spots):,})")
-    print(f"Drew {len(selected_spots):,} spots at {spot_um:.0f} um "
-          f"(radius {r_disp:.1f} display px)")
+    ax.scatter(
+        [],
+        [],
+        s=60,
+        facecolors="none",
+        edgecolors="black",
+        linewidths=1.3,
+        label=f"ST observations (n={len(selected_spots):,})",
+    )
+    print(
+        f"Drew {len(selected_spots):,} spots at {spot_um:.0f} um "
+        f"(radius {r_disp:.1f} display px)"
+    )
 else:
     print("No capture spots for this platform; spots not drawn.")
 
@@ -256,7 +271,10 @@ window_rectangle = Rectangle(
     (selected_window["xmin"] * display_scale, selected_window["ymin"] * display_scale),
     width=(selected_window["xmax"] - selected_window["xmin"]) * display_scale,
     height=(selected_window["ymax"] - selected_window["ymin"]) * display_scale,
-    fill=False, linewidth=2.0, edgecolor="black", zorder=5,
+    fill=False,
+    linewidth=2.0,
+    edgecolor="black",
+    zorder=5,
 )
 ax.add_patch(window_rectangle)
 

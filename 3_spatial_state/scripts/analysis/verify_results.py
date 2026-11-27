@@ -13,6 +13,7 @@ import glob
 from pathlib import Path
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import config
 
@@ -44,7 +45,7 @@ def find(*subs):
 
 STATE = find("interaction_state") or find("state")
 NICHE = find("niche")
-DOM   = find("dominan")
+DOM = find("dominan")
 
 print("detected columns")
 print(f"  state:     {STATE}")
@@ -55,16 +56,18 @@ if STATE is None:
     raise SystemExit("could not find the state column; inspect the list above")
 
 # ------------------------------------------------------------- denominators
-ALL_TISSUE  = len(D)
-ALL_SLIDES  = D["slide"].nunique()
+ALL_TISSUE = len(D)
+ALL_SLIDES = D["slide"].nunique()
 
 if "window_class" in D.columns:
     CO = D[D.window_class == 4].copy()
 else:
     CO = D[D[STATE].notna()].copy()
-    print("WARNING: no window_class column; co-occurring set inferred from state column\n")
+    print(
+        "WARNING: no window_class column; co-occurring set inferred from state column\n"
+    )
 
-n_co      = len(CO)
+n_co = len(CO)
 slides_co = CO["slide"].nunique()
 
 print("=" * 70)
@@ -80,7 +83,9 @@ print()
 print("=" * 70)
 print("STATES   (denominator = co-occurring windows)")
 print("=" * 70)
-print(f'{"state":26s}{"windows":>9s}{"% of co-occ":>13s}{"slides":>8s}{"win/slide":>11s}')
+print(
+    f'{"state":26s}{"windows":>9s}{"% of co-occ":>13s}{"slides":>8s}{"win/slide":>11s}'
+)
 counts = CO[STATE].value_counts(dropna=False)
 named = 0
 for st in counts.index:
@@ -124,8 +129,11 @@ if DOM is not None:
     print(hdr)
     rows = list(counts.index) + ["ALL co-occurring"]
     for st in rows:
-        m = (np.ones(n_co, dtype=bool) if st == "ALL co-occurring"
-             else (CO[STATE] == st).to_numpy())
+        m = (
+            np.ones(n_co, dtype=bool)
+            if st == "ALL co-occurring"
+            else (CO[STATE] == st).to_numpy()
+        )
         n = int(m.sum())
         if not n:
             continue

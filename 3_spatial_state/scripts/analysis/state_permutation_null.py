@@ -23,20 +23,21 @@ import glob
 from pathlib import Path
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import config
 
-STEP5   = config.STEP5_TABLES
-N_PERM  = 1000
+STEP5 = config.STEP5_TABLES
+N_PERM = 1000
 SPLIT_Q = 0.50
-SEED    = 0
+SEED = 0
 
 NUM = {
-    "int_i2c":  "interaction_inflammatory_to_neoplastic",
-    "int_c2i":  "interaction_neoplastic_to_inflammatory",
-    "inf_i2c":  "infiltration_inflammatory_to_neoplastic",
-    "inf_c2i":  "infiltration_neoplastic_to_inflammatory",
-    "modular":  "global_modularity",
+    "int_i2c": "interaction_inflammatory_to_neoplastic",
+    "int_c2i": "interaction_neoplastic_to_inflammatory",
+    "inf_i2c": "infiltration_inflammatory_to_neoplastic",
+    "inf_c2i": "infiltration_neoplastic_to_inflammatory",
+    "modular": "global_modularity",
 }
 CAT = {"sp_i": "immune_spatial_state", "sp_c": "cancer_spatial_state"}
 TUMOR_COUNT_COL = "neoplastic_count"
@@ -90,12 +91,13 @@ def states(rawn, rawc, tumc):
     h, l, cl_i, cl_c = build(rawn, rawc)
     contact_hi = h["int_i2c"] & h["int_c2i"]
     contact_lo = l["int_i2c"] & l["int_c2i"]
-    infil_hi   = h["inf_i2c"] & h["inf_c2i"]
+    infil_hi = h["inf_i2c"] & h["inf_c2i"]
     return {
         "distant_co_occurrence": contact_lo & cl_i & cl_c & h["modular"],
-        "bordering":             (contact_hi & l["inf_i2c"] & cl_i & h["modular"]
-                                  & (tumc >= BORDER_MIN_TUMOR)),
-        "infiltrated":           contact_hi & infil_hi & l["modular"],
+        "bordering": (
+            contact_hi & l["inf_i2c"] & cl_i & h["modular"] & (tumc >= BORDER_MIN_TUMOR)
+        ),
+        "infiltrated": contact_hi & infil_hi & l["modular"],
     }
 
 
@@ -119,26 +121,32 @@ else:
         total_mismatch += mm
         print(f"{k:26s}{int(mine.sum()):9d}{int(theirs.sum()):10d}{mm:10d}")
     if total_mismatch == 0:
-        print("\n  Exact match: the rebuilt labels reproduce the pipeline labels in every window.")
+        print(
+            "\n  Exact match: the rebuilt labels reproduce the pipeline labels in every window."
+        )
     else:
         print(f"\n  {total_mismatch} disagreeing window(s). details:\n")
         show = list(NUM.values()) + list(CAT.values())
         for k in names:
             bad = np.where(rep[k] ^ (truth == k))[0]
             for i in bad[:10]:
-                print(f"  state={k}  rebuilt={bool(rep[k][i])}  "
-                      f"pipeline={truth[i]}  slide={D['slide'].iat[i]}")
+                print(
+                    f"  state={k}  rebuilt={bool(rep[k][i])}  "
+                    f"pipeline={truth[i]}  slide={D['slide'].iat[i]}"
+                )
                 for cname in show:
                     print(f"      {cname:48s}{D[cname].iat[i]}")
                 for mk, cname in NUM.items():
                     if mk in SIGN:
                         continue
-                    ix = D.index[D.slide == D['slide'].iat[i]]
+                    ix = D.index[D.slide == D["slide"].iat[i]]
                     ref = D.loc[ix, cname].to_numpy(float)
                     ref = ref[np.isfinite(ref)]
                     if len(ref):
-                        print(f"      within-slide median of {cname:28s}"
-                              f"{np.quantile(ref, SPLIT_Q)!r}")
+                        print(
+                            f"      within-slide median of {cname:28s}"
+                            f"{np.quantile(ref, SPLIT_Q)!r}"
+                        )
                 print()
 print()
 
@@ -170,12 +178,16 @@ for p in range(N_PERM):
 print("\n" + "=" * 78)
 print(f"PART 2   PERMUTATION NULL   seed={SEED}   permutations={N_PERM}")
 print("=" * 78)
-print(f'{"state":26s}{"obs n":>8s}{"obs":>8s}{"null mean":>11s}'
-      f'{"null 95% hi":>13s}{"ratio":>8s}{"p":>10s}')
+print(
+    f'{"state":26s}{"obs n":>8s}{"obs":>8s}{"null mean":>11s}'
+    f'{"null 95% hi":>13s}{"ratio":>8s}{"p":>10s}'
+)
 for k in names:
     a = np.array(null[k])
     ratio = obs[k] / a.mean() if a.mean() > 0 else float("nan")
     pval = (1 + int((a >= obs[k]).sum())) / (1 + N_PERM)
-    print(f"{k:26s}{int(rep[k].sum()):8d}{100*obs[k]:7.2f}%"
-          f"{100*a.mean():10.2f}%{100*np.quantile(a,0.975):12.2f}%"
-          f"{ratio:8.2f}{pval:10.4f}")
+    print(
+        f"{k:26s}{int(rep[k].sum()):8d}{100*obs[k]:7.2f}%"
+        f"{100*a.mean():10.2f}%{100*np.quantile(a,0.975):12.2f}%"
+        f"{ratio:8.2f}{pval:10.4f}"
+    )

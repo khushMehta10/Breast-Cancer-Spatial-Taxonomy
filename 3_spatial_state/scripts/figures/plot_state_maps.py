@@ -1,6 +1,6 @@
 """
 Interaction-state maps -- one tile per window over the H&E thumbnail,
-coloured by Step 5 interaction state (Distant / Bordering / Infiltrated).
+colored by Step 5 interaction state (Distant / Bordering / Infiltrated).
 
 Input : 3_spatial_state/output/step5_interaction_state/tables/<SLIDE>_interaction_state.csv
 Image : breast/st/<SLIDE>.h5ad  (downscaled_fullres thumbnail + scalefactor)
@@ -12,55 +12,68 @@ import numpy as np
 import pandas as pd
 import anndata as ad
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from pathlib import Path
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import config
 
 # ============================================================
 # CONFIG
 # ============================================================
-BATCH_ALL  = True          # True = every table in TABLE_DIR
-SLIDES     = ["SPA105"]    # used only when BATCH_ALL = False
+BATCH_ALL = True  # True = every table in TABLE_DIR
+SLIDES = ["SPA105"]  # used only when BATCH_ALL = False
 
-ST_DIR     = config.BREAST_ST_DIR
-TABLE_DIR  = config.STEP5_TABLES
-FIG_DIR    = config.STATE_OUT / "step5_interaction_state" / "state_maps"
+ST_DIR = config.BREAST_ST_DIR
+TABLE_DIR = config.STEP5_TABLES
+FIG_DIR = config.STATE_OUT / "step5_interaction_state" / "state_maps"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
-ALPHA       = 0.72      # tile transparency so the H&E still shows through
-GRID_EDGE   = "white"
-GRID_LW     = 0.3
-HATCH_EMPTY = True      # True -> zero-cell windows hatched
-SHOW_NICHE  = True      # True -> niche windows drawn in their own colour
+ALPHA = 0.72  # tile transparency so the H&E still shows through
+GRID_EDGE = "white"
+GRID_LW = 0.3
+HATCH_EMPTY = True  # True -> zero-cell windows hatched
+SHOW_NICHE = True  # True -> niche windows drawn in their own color
 
-# interaction state -> colour (state colours match interaction_state.py; the two
+# interaction state -> color (state colors match interaction_state.py; the two
 # background classes are lighter so the H&E shows through)
 STATE_COLORS = {
-    "not_applicable":        "#E2E8EB",   # one compartment absent   pale grey
-    "unlabeled":             "#B9C0C6",   # co-occurring, no state   grey
-    "distant_co_occurrence": "#4C6E8A",   # steel blue
-    "bordering":             "#E4A11B",   # amber
-    "infiltrated":           "#35B779",   # green
-    "niche":                 "#D9534F",   # red, infiltrated + niche
+    "not_applicable": "#E2E8EB",  # one compartment absent   pale gray
+    "unlabeled": "#B9C0C6",  # co-occurring, no state   gray
+    "distant_co_occurrence": "#4C6E8A",  # steel blue
+    "bordering": "#E4A11B",  # amber
+    "infiltrated": "#35B779",  # green
+    "niche": "#D9534F",  # red, infiltrated + niche
 }
 STATE_LABELS = {
-    "not_applicable":        "One compartment absent",
-    "unlabeled":             "Co-occurring, unlabeled",
+    "not_applicable": "One compartment absent",
+    "unlabeled": "Co-occurring, unlabeled",
     "distant_co_occurrence": "Distant co-occurrence",
-    "bordering":             "Bordering",
-    "infiltrated":           "Infiltrated",
-    "niche":                 "Niche (infiltrated)",
+    "bordering": "Bordering",
+    "infiltrated": "Infiltrated",
+    "niche": "Niche (infiltrated)",
 }
-ORDER = ["not_applicable", "unlabeled", "distant_co_occurrence",
-         "bordering", "infiltrated", "niche"]
+ORDER = [
+    "not_applicable",
+    "unlabeled",
+    "distant_co_occurrence",
+    "bordering",
+    "infiltrated",
+    "niche",
+]
 NAMED = ["distant_co_occurrence", "bordering", "infiltrated", "niche"]
-COUNT_COLS   = ["inflammatory_count", "neoplastic_count",
-                "connective_count", "epithelial_count", "dead_count"]
+COUNT_COLS = [
+    "inflammatory_count",
+    "neoplastic_count",
+    "connective_count",
+    "epithelial_count",
+    "dead_count",
+]
 
 
 def find_h5ad(slide_id):
@@ -90,16 +103,21 @@ def render_slide(slide_id):
     # display state: niche promoted out of infiltrated when SHOW_NICHE
     display = df["interaction_state"].astype(str).to_numpy()
     if SHOW_NICHE and "is_niche" in df.columns:
-        nm = df["is_niche"].astype(str).str.lower().isin(
-            ["true", "1", "1.0", "yes"]).to_numpy()
+        nm = (
+            df["is_niche"]
+            .astype(str)
+            .str.lower()
+            .isin(["true", "1", "1.0", "yes"])
+            .to_numpy()
+        )
         display = np.where(nm, "niche", display)
 
     adata = ad.read_h5ad(h5)
-    lib   = adata.uns["spatial"][list(adata.uns["spatial"].keys())[0]]
-    img   = np.asarray(lib["images"]["downscaled_fullres"])
+    lib = adata.uns["spatial"][list(adata.uns["spatial"].keys())[0]]
+    img = np.asarray(lib["images"]["downscaled_fullres"])
     scale = float(lib["scalefactors"]["tissue_downscaled_fullres_scalef"])
-    H, W  = img.shape[0], img.shape[1]
-    extent = [0, W / scale, H / scale, 0]      # full-resolution frame, y down
+    H, W = img.shape[0], img.shape[1]
+    extent = [0, W / scale, H / scale, 0]  # full-resolution frame, y down
 
     box_w = float(np.median(df["xmax"] - df["xmin"]))
     box_h = float(np.median(df["ymax"] - df["ymin"]))
@@ -115,24 +133,39 @@ def render_slide(slide_id):
     ax.set_title(f"{slide_id}\nTumor-immune interaction state")
     ax.imshow(img, extent=extent, interpolation="nearest", zorder=0)
 
-    n_hatch  = 0
+    n_hatch = 0
     by_state = {k: 0 for k in STATE_COLORS}
     for row, tot, st in zip(df.itertuples(index=False), total, display):
         x0, y0 = row.xmin, row.ymin
-        w, h   = row.xmax - row.xmin, row.ymax - row.ymin
+        w, h = row.xmax - row.xmin, row.ymax - row.ymin
         if HATCH_EMPTY and tot <= 0:
-            ax.add_patch(patches.Rectangle(
-                (x0, y0), w, h, facecolor=(0.5, 0.5, 0.5, 0.12),
-                hatch="////", edgecolor=(0.35, 0.35, 0.35, 0.9),
-                linewidth=0, zorder=2))
+            ax.add_patch(
+                patches.Rectangle(
+                    (x0, y0),
+                    w,
+                    h,
+                    facecolor=(0.5, 0.5, 0.5, 0.12),
+                    hatch="////",
+                    edgecolor=(0.35, 0.35, 0.35, 0.9),
+                    linewidth=0,
+                    zorder=2,
+                )
+            )
             n_hatch += 1
         else:
-            named = st in ("distant_co_occurrence", "bordering",
-                           "infiltrated", "niche")
-            ax.add_patch(patches.Rectangle(
-                (x0, y0), w, h, facecolor=STATE_COLORS.get(st, "#000000"),
-                alpha=ALPHA, edgecolor=GRID_EDGE, linewidth=GRID_LW,
-                zorder=3 if named else 2))
+            named = st in ("distant_co_occurrence", "bordering", "infiltrated", "niche")
+            ax.add_patch(
+                patches.Rectangle(
+                    (x0, y0),
+                    w,
+                    h,
+                    facecolor=STATE_COLORS.get(st, "#000000"),
+                    alpha=ALPHA,
+                    edgecolor=GRID_EDGE,
+                    linewidth=GRID_LW,
+                    zorder=3 if named else 2,
+                )
+            )
             by_state[st] = by_state.get(st, 0) + 1
 
     pad = max(box_w, box_h) * 0.10
@@ -142,13 +175,24 @@ def render_slide(slide_id):
     ax.set_xlabel("Slide x-coordinate")
     ax.set_ylabel("Slide y-coordinate")
 
-    handles = [patches.Patch(facecolor=STATE_COLORS[s], edgecolor="none",
-                             alpha=ALPHA,
-                             label=f"{STATE_LABELS[s]}  (n={by_state.get(s, 0)})")
-               for s in NAMED]
-    leg = ax.legend(handles=handles, loc="upper right", frameon=True,
-                    fontsize=9, title="Interaction state",
-                    borderpad=0.6, labelspacing=0.45)
+    handles = [
+        patches.Patch(
+            facecolor=STATE_COLORS[s],
+            edgecolor="none",
+            alpha=ALPHA,
+            label=f"{STATE_LABELS[s]}  (n={by_state.get(s, 0)})",
+        )
+        for s in NAMED
+    ]
+    leg = ax.legend(
+        handles=handles,
+        loc="upper right",
+        frameon=True,
+        fontsize=9,
+        title="Interaction state",
+        borderpad=0.6,
+        labelspacing=0.45,
+    )
     leg.get_frame().set_facecolor("white")
     leg.get_frame().set_edgecolor("#CCCCCC")
     leg.get_frame().set_alpha(0.92)
@@ -159,18 +203,25 @@ def render_slide(slide_id):
     plt.savefig(out, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
-    summary = ", ".join(f"{STATE_LABELS[s]}={by_state.get(s, 0)}"
-                        for s in ORDER[2:] if by_state.get(s, 0))
-    print(f"{slide_id}: {len(df)} windows ({summary or 'none named'}, "
-          f"hatched={n_hatch}) -> {out.name}")
+    summary = ", ".join(
+        f"{STATE_LABELS[s]}={by_state.get(s, 0)}"
+        for s in ORDER[2:]
+        if by_state.get(s, 0)
+    )
+    print(
+        f"{slide_id}: {len(df)} windows ({summary or 'none named'}, "
+        f"hatched={n_hatch}) -> {out.name}"
+    )
 
 
 # ============================================================
 # RUN
 # ============================================================
 if BATCH_ALL:
-    ids = sorted(p.name.replace("_interaction_state.csv", "")
-                 for p in TABLE_DIR.glob("*_interaction_state.csv"))
+    ids = sorted(
+        p.name.replace("_interaction_state.csv", "")
+        for p in TABLE_DIR.glob("*_interaction_state.csv")
+    )
 else:
     ids = SLIDES
 

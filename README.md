@@ -1,15 +1,17 @@
 # Breast Cancer Spatial Taxonomy
 
-Tumour–immune spatial states in breast cancer H&E whole-slide images.
+Tumor–immune spatial states in breast cancer H&E whole-slide images.
 
-Nuclei are segmented and typed with CellViT, linked into a k = 5 nearest-neighbour
-cell graph, and summarised per 500 × 500 µm window with ATHENA spatial features.
-Each window that holds both immune and tumour cells is then tested against three
+**Author:** Khush Mehta
+
+Nuclei are segmented and typed with CellViT, linked into a k = 5 nearest-neighbor
+cell graph, and summarized per 500 × 500 µm window with ATHENA spatial features.
+Each window that holds both immune and tumor cells is then tested against three
 rule-based states:
 
 - **distant co-occurrence**: both compartments present and clustered, interacting below chance
-- **bordering**: immune and tumour in contact without penetration
-- **infiltrated**: immune cells dispersed among tumour cells
+- **bordering**: immune and tumor in contact without penetration
+- **infiltrated**: immune cells dispersed among tumor cells
 
 Slides and spatial-transcriptomics data come from the HEST-1k collection
 (sample IDs `SPA*`, `TENX*`, `NCBI*`).
@@ -53,7 +55,8 @@ Results are written to the `output/` folder of each stage.
 
 101 breast slides. Fourteen further slides are excluded and listed in
 `config.EXCLUDED_SLIDES`: 12 duplicate slides (SPA119–SPA130) and 2 with an
-incorrect pixel size (TENX94, TENX95).
+incorrect pixel size (TENX94, TENX95). Windows with no detected nuclei are left out,
+which leaves 9,610 windows.
 
 ## Stage 1: CellViT (`1_cellvit/`)
 
@@ -63,7 +66,7 @@ incorrect pixel size (TENX94, TENX95).
 | `scripts/run_cellvit_batch2.sh` | SLURM array job, slides 100–123 (40×, pixel size read from the slide) |
 | `scripts/run_cellvit_spa51.sh` | single-slide run (SPA51) |
 | `scripts/cellvit_status.sh` | queue, progress and failure summary |
-| `scripts/qupath/export_cells_qupath.py` | CellViT nuclei → QuPath overlays, coloured by cell type |
+| `scripts/qupath/export_cells_qupath.py` | CellViT nuclei → QuPath overlays, colored by cell type |
 | `scripts/qupath/export_spots_qupath.py` | spatial-transcriptomics spots at their physical size |
 | `scripts/qupath/export_center_boxes_qupath.py` | 512/1024/2048 px boxes around the central spot of selected slides |
 | `scripts/qupath/export_spot_boxes_qupath.py` | a 1024 px box around every spot, all slides |
@@ -93,11 +96,11 @@ Reads the per-window ATHENA features (`data/athena_2/`, computed with ATHENA fro
 per-cell tables and kNN graphs) and runs, in order:
 
 ```
-scripts/pipeline/classify_windows.py    step 1  window classes by immune / tumour presence
-scripts/pipeline/measure_abundance.py   step 2  immune and tumour abundance per window
+scripts/pipeline/classify_windows.py    step 1  window classes by immune / tumor presence
+scripts/pipeline/measure_abundance.py   step 2  immune and tumor abundance per window
 scripts/pipeline/spatial_state.py       step 3  per-phenotype arrangement (isolated, dispersed, aggregate, broad)
-scripts/pipeline/interaction_state.py   step 5  tumour–immune state (distant, bordering, infiltrated)
-scripts/pipeline/tme_engagement.py      step 6  engagement with connective tissue and epithelium, tumour and immune burden
+scripts/pipeline/interaction_state.py   step 5  tumor–immune state (distant, bordering, infiltrated)
+scripts/pipeline/tme_engagement.py      step 6  engagement with connective tissue and epithelium, tumor and immune burden
 ```
 
 There is no separate step 4; `spatial_state.py` covers steps 3–4.
